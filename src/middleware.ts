@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 const isPublicRoute = createRouteMatcher(["/", "/api/health"]);
 
@@ -19,12 +19,12 @@ function corsHeaders(origin: string | null): Headers {
   headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   headers.set(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, X-Requested-With"
+    "Authorization, Content-Type, X-Requested-With, X-E2E-Role"
   );
   return headers;
 }
 
-export default clerkMiddleware(async (auth, request) => {
+const clerkHandler = clerkMiddleware(async (auth, request) => {
   const origin = request.headers.get("origin");
   const cors = corsHeaders(origin);
 
@@ -40,6 +40,23 @@ export default clerkMiddleware(async (auth, request) => {
   cors.forEach((value, key) => response.headers.set(key, value));
   return response;
 });
+
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  const origin = request.headers.get("origin");
+  const cors = corsHeaders(origin);
+
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, { status: 204, headers: cors });
+  }
+
+  if (process.env.E2E_TEST_MODE === "true") {
+    const response = NextResponse.next();
+    cors.forEach((value, key) => response.headers.set(key, value));
+    return response;
+  }
+
+  return clerkHandler(request, event);
+}
 
 export const config = {
   matcher: [
