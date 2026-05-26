@@ -5,7 +5,12 @@ REST API for the MediBook hackathon MVP. Pair with the UI repo:
 - **UI:** https://github.com/devinaraina22/talentserv-ai-hackathon-group-23-UI
 - **API:** https://github.com/devinaraina22/talentserv-ai-hackathon-group-23-backend
 
-## Quick start
+## CI
+
+This API repo runs **unit tests + build only** (`npm test`, `npm run build`).  
+**Playwright e2e lives in the UI repo** — the backend does not need `.env.local` for CI.
+
+Local dev: `cp .env.example .env.local` then `npm run dev:safe` (optional key check).
 
 ```bash
 npm install

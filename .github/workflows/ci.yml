@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, api-only]
+  pull_request:
+    branches: [main, master, api-only]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - run: npm run db:seed
+
+      - run: npm test
+
+      - name: Build API
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_ci_placeholder_key_012345678901234567890
+          CLERK_SECRET_KEY: sk_test_ci_placeholder_key_012345678901234567890
+          FRONTEND_URL: http://localhost:3000
