@@ -1,0 +1,157 @@
+{
+  "patients": [
+    {
+      "patient_id": "PAT-001",
+      "full_name": "Riya Sharma",
+      "age": 32,
+      "gender": "Female",
+      "phone_number": "9876543210",
+      "email": "riya@example.com",
+      "city": "Pune",
+      "created_at": "2026-05-01T10:00:00.000Z",
+      "updated_at": "2026-05-01T10:00:00.000Z"
+    },
+    {
+      "patient_id": "PAT-002",
+      "full_name": "Arjun Mehta",
+      "age": 45,
+      "gender": "Male",
+      "phone_number": "9123456780",
+      "email": "arjun@example.com",
+      "city": "Mumbai",
+      "created_at": "2026-05-02T10:00:00.000Z",
+      "updated_at": "2026-05-02T10:00:00.000Z"
+    },
+    {
+      "patient_id": "PAT-003",
+      "full_name": "Priya Nair",
+      "age": 8,
+      "gender": "Female",
+      "phone_number": "9988776655",
+      "email": "priya.parent@example.com",
+      "city": "Bangalore",
+      "created_at": "2026-05-03T10:00:00.000Z",
+      "updated_at": "2026-05-03T10:00:00.000Z"
+    }
+  ],
+  "health_intakes": [
+    {
+      "patient_id": "PAT-001",
+      "symptoms": "Fever, cough",
+      "existing_conditions": "None",
+      "allergies": "None",
+      "current_medications": "None",
+      "visit_reason": "General consultation",
+      "emergency_contact": "Raj Sharma - 9876543211",
+      "consent_acknowledged": true,
+      "updated_at": "2026-05-01T11:00:00.000Z"
+    },
+    {
+      "patient_id": "PAT-002",
+      "symptoms": "Chest discomfort",
+      "existing_conditions": "Diabetes",
+      "allergies": "Penicillin",
+      "current_medications": "Metformin",
+      "visit_reason": "Cardiology follow-up",
+      "emergency_contact": "Sunita Mehta - 9123456781",
+      "consent_acknowledged": true,
+      "updated_at": "2026-05-02T11:00:00.000Z"
+    }
+  ],
+  "appointments": [
+    {
+      "appointment_id": "APT-001",
+      "patient_id": "PAT-001",
+      "doctor_or_department": "General Physician",
+      "appointment_date": "2026-05-22",
+      "appointment_time": "10:30 AM",
+      "appointment_type": "In-person",
+      "status": "Booked",
+      "notes": "First visit",
+      "created_at": "2026-05-01T12:00:00.000Z",
+      "updated_at": "2026-05-01T12:00:00.000Z"
+    },
+    {
+      "appointment_id": "APT-002",
+      "patient_id": "PAT-002",
+      "doctor_or_department": "Cardiology",
+      "appointment_date": "2026-05-22",
+      "appointment_time": "02:00 PM",
+      "appointment_type": "Online",
+      "status": "Booked",
+      "notes": "Follow-up",
+      "created_at": "2026-05-02T12:00:00.000Z",
+      "updated_at": "2026-05-02T12:00:00.000Z"
+    },
+    {
+      "appointment_id": "APT-003",
+      "patient_id": "PAT-003",
+      "doctor_or_department": "Pediatrics",
+      "appointment_date": "2026-05-20",
+      "appointment_time": "09:00 AM",
+      "appointment_type": "In-person",
+      "status": "Completed",
+      "notes": "Vaccination check",
+      "created_at": "2026-05-03T12:00:00.000Z",
+      "updated_at": "2026-05-20T09:30:00.000Z"
+    }
+  ],
+  "availability": [
+    {
+      "id": "AVL-001",
+      "doctor_or_department": "General Physician",
+      "day_of_week": 1,
+      "time_slots": ["09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "02:00 PM", "02:30 PM", "03:00 PM"]
+    },
+    {
+      "id": "AVL-002",
+      "doctor_or_department": "General Physician",
+      "day_of_week": 3,
+      "time_slots": ["09:00 AM", "10:00 AM", "10:30 AM", "11:00 AM", "03:00 PM", "04:00 PM"]
+    },
+    {
+      "id": "AVL-003",
+      "doctor_or_department": "Cardiology",
+      "day_of_week": 2,
+      "time_slots": ["10:00 AM", "10:30 AM", "02:00 PM", "02:30 PM", "03:00 PM"]
+    },
+    {
+      "id": "AVL-004",
+      "doctor_or_department": "Pediatrics",
+      "day_of_week": 4,
+      "time_slots": ["09:00 AM", "09:30 AM", "10:00 AM", "11:00 AM"]
+    },
+    {
+      "id": "AVL-005",
+      "doctor_or_department": "Dental",
+      "day_of_week": 5,
+      "time_slots": ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM"]
+    }
+  ],
+  "user_profiles": [],
+  "audit_logs": [
+    {
+      "id": "AUD-0001",
+      "timestamp": "2026-05-01T12:00:00.000Z",
+      "user_id": "system",
+      "user_email": "system@clinic.demo",
+      "user_role": "Admin",
+      "action": "CREATE",
+      "entity_type": "appointment",
+      "entity_id": "APT-001",
+      "details": "Seeded appointment for Riya Sharma"
+    }
+  ],
+  "reminders": [
+    {
+      "id": "REM-0001",
+      "appointment_id": "APT-001",
+      "channel": "email",
+      "reminder_type": "day_before",
+      "recipient": "riya@example.com",
+      "message": "Friendly reminder — tomorrow: APT-001 | MediBook",
+      "sent_at": "2026-05-21T09:00:00.000Z",
+      "simulated": true
+    }
+  ]
+}
