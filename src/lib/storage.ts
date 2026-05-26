@@ -1,12 +1,12 @@
 import fs from "fs";
 import path from "path";
-import { Redis } from "@upstash/redis";
 import type { DataStore } from "./types";
+import { getPool } from "./postgres";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 const SEED_PATH = path.join(DATA_DIR, "seed.json");
-const REDIS_KEY = "medibook:store";
+const POSTGRES_ROW_ID = "default";
 
 export function migrateStore(raw: Partial<DataStore>): DataStore {
   return {
@@ -20,11 +20,15 @@ export function migrateStore(raw: Partial<DataStore>): DataStore {
   };
 }
 
+function emptyStore(): DataStore {
+  return migrateStore({});
+}
+
 function loadSeedFromFile(): DataStore {
   if (fs.existsSync(SEED_PATH)) {
     return migrateStore(JSON.parse(fs.readFileSync(SEED_PATH, "utf-8")) as Partial<DataStore>);
   }
-  return migrateStore({});
+  return emptyStore();
 }
 
 function isPlaceholder(value: string): boolean {
@@ -34,28 +38,47 @@ function isPlaceholder(value: string): boolean {
     lower.includes("your_key") ||
     lower.includes("your-key") ||
     lower.includes("placeholder") ||
+    lower.includes("your-neon") ||
+    lower.includes("user:password@host") ||
     lower === "your-upstash-token"
   );
 }
 
-function isRedisEnabled(): boolean {
-  const url = process.env.KV_REST_API_URL?.trim();
-  const token = process.env.KV_REST_API_TOKEN?.trim();
-  if (!url || !token) return false;
-  if (isPlaceholder(url) || isPlaceholder(token)) return false;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "https:" && parsed.hostname.endsWith(".upstash.io");
-  } catch {
-    return false;
-  }
+export function getDatabaseUrl(): string | undefined {
+  const url = (process.env.DATABASE_URL ?? process.env.POSTGRES_URL)?.trim();
+  if (!url || isPlaceholder(url)) return undefined;
+  if (!url.startsWith("postgres://") && !url.startsWith("postgresql://")) return undefined;
+  return url;
 }
 
-function getRedis(): Redis {
-  return new Redis({
-    url: process.env.KV_REST_API_URL!,
-    token: process.env.KV_REST_API_TOKEN!,
-  });
+export function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
+function isPostgresEnabled(): boolean {
+  return !!getDatabaseUrl();
+}
+
+async function loadStoreFromPostgres(): Promise<DataStore | null> {
+  const pool = getPool();
+  const { rows } = await pool.query<{ data: Partial<DataStore> }>(
+    "SELECT data FROM medibook_store WHERE id = $1",
+    [POSTGRES_ROW_ID]
+  );
+  if (!rows[0]?.data) return null;
+  return migrateStore(rows[0].data);
+}
+
+async function saveStoreToPostgres(store: DataStore): Promise<void> {
+  const pool = getPool();
+  const payload = JSON.stringify(store);
+  await pool.query(
+    `INSERT INTO medibook_store (id, data, updated_at)
+     VALUES ($1, $2::jsonb, NOW())
+     ON CONFLICT (id) DO UPDATE
+     SET data = EXCLUDED.data, updated_at = NOW()`,
+    [POSTGRES_ROW_ID, payload]
+  );
 }
 
 async function loadStoreFromFile(): Promise<DataStore> {
@@ -66,17 +89,33 @@ async function loadStoreFromFile(): Promise<DataStore> {
   return migrateStore(JSON.parse(fs.readFileSync(STORE_PATH, "utf-8")) as Partial<DataStore>);
 }
 
+async function saveStoreToFile(store: DataStore): Promise<void> {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+}
+
+function requireProductionPostgres(): void {
+  if (!isPostgresEnabled()) {
+    throw new Error(
+      "DATABASE_URL is required in production. Add Neon Postgres in Vercel → Storage and link it to this project."
+    );
+  }
+}
+
 export async function loadStore(): Promise<DataStore> {
-  if (isRedisEnabled()) {
+  if (isProductionRuntime()) {
+    requireProductionPostgres();
+    const data = await loadStoreFromPostgres();
+    return data ?? emptyStore();
+  }
+
+  if (isPostgresEnabled()) {
     try {
-      const redis = getRedis();
-      const data = await redis.get<DataStore>(REDIS_KEY);
-      if (data) return migrateStore(data);
-      const seed = loadSeedFromFile();
-      await redis.set(REDIS_KEY, seed);
-      return seed;
+      const data = await loadStoreFromPostgres();
+      if (data) return data;
+      return emptyStore();
     } catch (err) {
-      console.warn("[storage] Redis unavailable, using local file store:", err);
+      console.warn("[storage] Postgres read failed, using local file store:", err);
     }
   }
 
@@ -84,19 +123,31 @@ export async function loadStore(): Promise<DataStore> {
 }
 
 export async function saveStore(store: DataStore): Promise<void> {
-  if (isRedisEnabled()) {
+  if (isProductionRuntime()) {
+    requireProductionPostgres();
+    await saveStoreToPostgres(store);
+    return;
+  }
+
+  if (isPostgresEnabled()) {
     try {
-      await getRedis().set(REDIS_KEY, store);
+      await saveStoreToPostgres(store);
       return;
     } catch (err) {
-      console.warn("[storage] Redis write failed, using local file store:", err);
+      console.warn("[storage] Postgres write failed, using local file store:", err);
     }
   }
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+
+  await saveStoreToFile(store);
 }
 
+/** One-time manual seed (npm run db:seed) — not called automatically at runtime. */
 export async function resetStore(seed?: DataStore): Promise<void> {
   const data = seed ?? loadSeedFromFile();
   await saveStore(data);
+}
+
+export function getActiveStorageBackend(): "postgres" | "file" {
+  if (isProductionRuntime() || isPostgresEnabled()) return "postgres";
+  return "file";
 }

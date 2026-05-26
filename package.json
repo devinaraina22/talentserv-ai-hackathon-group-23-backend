@@ -11,12 +11,14 @@
     "lint": "next lint",
     "test": "vitest run",
     "db:seed": "tsx scripts/seed.ts",
+    "db:init": "tsx scripts/init-db.ts",
+    "db:setup": "npm run db:init && npm run db:seed",
     "reminders:due": "tsx scripts/send-due-reminders.ts",
     "email:test": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.0",
-    "@upstash/redis": "^1.34.5",
+    "pg": "^8.14.1",
     "next": "^15.2.4",
     "nodemailer": "^6.10.1",
     "react": "^19.0.0",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.0",
     "@types/node": "^22.13.10",
+    "@types/pg": "^8.11.11",
     "@types/nodemailer": "^6.4.23",
     "@types/react": "^19.0.10",
     "eslint": "^9.22.0",
