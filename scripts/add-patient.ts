@@ -64,7 +64,6 @@ async function main() {
       appointment_date: "2026-06-02",
       appointment_time: "11:00 AM",
       appointment_type: "In-person",
-      status: "Booked",
       notes: "Demo patient visit",
     });
     console.log("Added appointment APT-004");

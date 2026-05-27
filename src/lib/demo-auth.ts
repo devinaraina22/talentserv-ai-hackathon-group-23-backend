@@ -4,7 +4,6 @@ import {
   demoSessionUserId,
   demoStaffDisplayName,
   isPatientSession,
-  parseDemoSession,
   resolveDemoSessionPayload,
   type DemoSessionPayload,
 } from "./demo-session";
