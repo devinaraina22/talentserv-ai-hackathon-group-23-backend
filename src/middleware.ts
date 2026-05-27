@@ -1,7 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
-const isPublicRoute = createRouteMatcher(["/", "/api/health"]);
+// API routes validate JWT in route handlers — do not use auth.protect() here
+// (protect-rewrite breaks cross-origin Bearer tokens from the UI).
+const isPublicRoute = createRouteMatcher(["/", "/api/(.*)"]);
 
 function corsHeaders(origin: string | null): Headers {
   const allowed = new Set(
