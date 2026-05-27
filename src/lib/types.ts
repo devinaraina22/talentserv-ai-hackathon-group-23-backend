@@ -10,6 +10,8 @@ export interface Patient {
   gender: string;
   phone_number: string;
   email: string;
+  country: string;
+  country_code: string;
   city: string;
   created_at: string;
   updated_at: string;

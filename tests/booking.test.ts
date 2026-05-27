@@ -36,6 +36,8 @@ describe("Patient registration validation", () => {
       gender: "Female",
       phone_number: "1234567890",
       email: "test@example.com",
+      country: "India",
+      country_code: "IN",
       city: "Pune",
     });
     expect(result.success).toBe(true);
@@ -49,6 +51,8 @@ describe("Patient registration validation", () => {
       gender: "Female",
       phone_number: "123",
       email: "test@example.com",
+      country: "India",
+      country_code: "IN",
       city: "Pune",
     });
     expect(result.success).toBe(false);
@@ -68,6 +72,8 @@ describe("Patient registration validation", () => {
       gender: "Male",
       phone_number: "1112223334",
       email: "demo@example.com",
+      country: "India",
+      country_code: "IN",
       city: "Delhi",
     });
     expect(patient.patient_id).toBe("PAT-010");

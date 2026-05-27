@@ -13,6 +13,11 @@ export const patientSchema = z.object({
     .string()
     .regex(/^\d{10}$/, "Phone number must be 10 digits"),
   email: z.string().email("Invalid email address"),
+  country: z.string().min(2, "Country is required"),
+  country_code: z
+    .string()
+    .length(2, "Country code must be ISO-2")
+    .transform((v) => v.toUpperCase()),
   city: z.string().min(2, "City is required"),
 });
 
