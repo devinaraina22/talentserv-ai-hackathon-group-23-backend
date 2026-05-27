@@ -7,6 +7,7 @@ describe("storage backend selection", () => {
   });
 
   it("detects postgres when DATABASE_URL is set", () => {
+    vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("DATABASE_URL", "postgresql://user:pass@ep-test.neon.tech/neondb?sslmode=require");
     expect(getDatabaseUrl()).toContain("neon.tech");
     expect(getActiveStorageBackend()).toBe("postgres");
@@ -20,6 +21,7 @@ describe("production storage requirements", () => {
   });
 
   it("requires DATABASE_URL in production runtime", async () => {
+    vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("DATABASE_URL", "");
@@ -29,8 +31,23 @@ describe("production storage requirements", () => {
   });
 
   it("identifies production on Vercel", () => {
+    vi.stubEnv("E2E_TEST_MODE", "");
     vi.stubEnv("VERCEL", "1");
     expect(isProductionRuntime()).toBe(true);
+    vi.unstubAllEnvs();
+  });
+
+  it("uses file storage when E2E_TEST_MODE is set in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("E2E_TEST_MODE", "true");
+    vi.stubEnv("DATABASE_URL", "");
+
+    expect(isProductionRuntime()).toBe(false);
+    expect(getActiveStorageBackend()).toBe("file");
+
+    const { loadStore } = await import("@/lib/storage");
+    await expect(loadStore()).resolves.toBeDefined();
     vi.unstubAllEnvs();
   });
 });

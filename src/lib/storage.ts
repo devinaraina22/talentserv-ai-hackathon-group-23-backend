@@ -52,6 +52,7 @@ export function getDatabaseUrl(): string | undefined {
 }
 
 export function isProductionRuntime(): boolean {
+  if (process.env.E2E_TEST_MODE === "true") return false;
   return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
 }
 
@@ -148,6 +149,7 @@ export async function resetStore(seed?: DataStore): Promise<void> {
 }
 
 export function getActiveStorageBackend(): "postgres" | "file" {
+  if (process.env.E2E_TEST_MODE === "true") return "file";
   if (isProductionRuntime() || isPostgresEnabled()) return "postgres";
   return "file";
 }
