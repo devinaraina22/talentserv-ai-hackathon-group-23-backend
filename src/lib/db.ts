@@ -16,6 +16,7 @@ import type {
   RoleAssignment,
 } from "./types";
 import { DAY_NAMES } from "./constants";
+import { demoStaffDisplayName } from "./demo-session";
 import { loadStore, saveStore, resetStore, migrateStore } from "./storage";
 
 export { resetStore, migrateStore };
@@ -79,6 +80,18 @@ export async function getRoleAssignmentForEmail(
   return store.role_assignments.find((r) => normalizeEmail(r.email) === normalized);
 }
 
+export async function getRoleAssignmentById(id: string): Promise<RoleAssignment | undefined> {
+  const store = await readStore();
+  return store.role_assignments.find((r) => r.id === id);
+}
+
+export async function getRoleAssignmentByRole(
+  role: RoleAssignment["role"]
+): Promise<RoleAssignment | undefined> {
+  const store = await readStore();
+  return store.role_assignments.find((r) => r.role === role);
+}
+
 export async function createRoleAssignment(
   data: Omit<RoleAssignment, "id" | "created_at" | "updated_at">
 ): Promise<RoleAssignment> {
@@ -122,7 +135,7 @@ export async function resolveRoleForEmail(email: string): Promise<{
   return {
     role: assignment.role,
     department: assignment.role === "Doctor" ? assignment.department : undefined,
-    displayName: assignment.name,
+    displayName: demoStaffDisplayName(email, assignment.name),
   };
 }
 

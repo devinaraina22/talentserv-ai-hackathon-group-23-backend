@@ -1,13 +1,16 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { E2E_ROLE_COOKIE, getE2eSessionUser, getE2eUser, isE2eMode, parseE2eRole } from "./e2e";
+import { getDemoSessionUser } from "./demo-auth";
 import { getUserProfile, logAudit, resolveRoleForEmail, upsertUserProfile } from "./db";
-import type { UserProfile } from "./types";
+import type { UserProfile, UserRole } from "./types";
 
 export async function getSessionUser(): Promise<{
   userId: string;
   email: string;
   name: string;
+  role?: UserRole;
+  department?: string;
 } | null> {
   if (isE2eMode()) {
     const e2e = await getE2eSessionUser();
@@ -15,8 +18,17 @@ export async function getSessionUser(): Promise<{
     const cookieRole = (await cookies()).get(E2E_ROLE_COOKIE)?.value;
     if (!cookieRole) return null;
     const user = getE2eUser(parseE2eRole(cookieRole));
-    return { userId: user.userId, email: user.email, name: user.name };
+    return {
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      department: user.department,
+    };
   }
+
+  const demo = await getDemoSessionUser();
+  if (demo) return demo;
 
   const { userId, sessionClaims } = await auth();
   if (!userId) return null;
@@ -51,9 +63,18 @@ export async function ensureUserProfile(session: {
   userId: string;
   email: string;
   name: string;
+  role?: UserRole;
+  department?: string;
 }): Promise<UserProfile> {
   const existing = await getUserProfile(session.userId);
-  const resolved = await resolveRoleForEmail(session.email);
+  const resolved =
+    session.role != null
+      ? {
+          role: session.role,
+          department: session.department,
+          displayName: session.name,
+        }
+      : await resolveRoleForEmail(session.email);
   const role = resolved.role;
   const department = resolved.department;
   const name = session.name || resolved.displayName || "User";

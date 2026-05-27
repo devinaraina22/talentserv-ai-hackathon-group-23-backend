@@ -10,7 +10,7 @@ export function isE2eMode(): boolean {
 
 const E2E_USERS: Record<
   UserRole,
-  { userId: string; email: string; name: string; role: UserRole }
+  { userId: string; email: string; name: string; role: UserRole; department?: string }
 > = {
   Admin: {
     userId: "e2e-admin",
@@ -35,6 +35,7 @@ const E2E_USERS: Record<
     email: "doctor@clinic.demo",
     name: "E2E Doctor",
     role: "Doctor",
+    department: "General Physician",
   },
 };
 
@@ -62,11 +63,19 @@ export async function getE2eSessionUser(): Promise<{
   userId: string;
   email: string;
   name: string;
+  role: UserRole;
+  department?: string;
 } | null> {
   if (!isE2eMode()) return null;
   const h = await headers();
   if (h.get("authorization") !== `Bearer ${E2E_BEARER}`) return null;
   const role = await getE2eRoleFromRequest();
   const user = E2E_USERS[role];
-  return { userId: user.userId, email: user.email, name: user.name };
+  return {
+    userId: user.userId,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    department: user.department,
+  };
 }

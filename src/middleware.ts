@@ -21,7 +21,7 @@ function corsHeaders(origin: string | null): Headers {
   headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   headers.set(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, X-Requested-With, X-E2E-Role"
+    "Authorization, Content-Type, X-Requested-With, X-E2E-Role, X-Demo-Staff-Id, X-Demo-As-Patient, X-Demo-Email, X-Demo-Name"
   );
   return headers;
 }
