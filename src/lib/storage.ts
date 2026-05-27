@@ -104,6 +104,10 @@ function requireProductionPostgres(): void {
 }
 
 export async function loadStore(): Promise<DataStore> {
+  if (process.env.E2E_TEST_MODE === "true") {
+    return loadStoreFromFile();
+  }
+
   if (isProductionRuntime()) {
     requireProductionPostgres();
     const data = await loadStoreFromPostgres();
@@ -124,6 +128,11 @@ export async function loadStore(): Promise<DataStore> {
 }
 
 export async function saveStore(store: DataStore): Promise<void> {
+  if (process.env.E2E_TEST_MODE === "true") {
+    await saveStoreToFile(store);
+    return;
+  }
+
   if (isProductionRuntime()) {
     requireProductionPostgres();
     await saveStoreToPostgres(store);

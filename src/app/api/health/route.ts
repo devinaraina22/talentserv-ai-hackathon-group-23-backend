@@ -5,7 +5,11 @@ import { healthIntakeSchema } from "@/lib/validation";
 import { friendlyError } from "@/lib/user-messages";
 
 export async function GET() {
-  return NextResponse.json({ ok: true, service: "medibook-api" });
+  return NextResponse.json({
+    ok: true,
+    service: "medibook-api",
+    e2e: process.env.E2E_TEST_MODE === "true",
+  });
 }
 
 export async function POST(request: NextRequest) {
