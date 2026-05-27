@@ -19,8 +19,27 @@ export async function getSessionUser(): Promise<{
     return { userId: user.userId, email: user.email, name: user.name };
   }
 
-  const { userId } = await auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId) return null;
+
+  const claims = sessionClaims as Record<string, unknown> | undefined;
+  const emailFromClaims =
+    (typeof claims?.email === "string" && claims.email) ||
+    (typeof claims?.primary_email_address === "string" && claims.primary_email_address) ||
+    undefined;
+  const nameFromClaims =
+    (typeof claims?.full_name === "string" && claims.full_name) ||
+    (typeof claims?.first_name === "string" && claims.first_name) ||
+    undefined;
+
+  if (emailFromClaims) {
+    return {
+      userId,
+      email: emailFromClaims,
+      name: nameFromClaims ?? "User",
+    };
+  }
+
   const user = await currentUser();
   return {
     userId,
