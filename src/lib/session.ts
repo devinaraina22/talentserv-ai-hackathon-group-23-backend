@@ -1,8 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import { E2E_ROLE_COOKIE, getE2eSessionUser, getE2eUser, isE2eMode, parseE2eRole } from "./e2e";
-import { getUserProfile, logAudit, upsertUserProfile } from "./db";
-import { roleForEmail } from "./roles";
+import { getUserProfile, logAudit, resolveRoleForEmail, upsertUserProfile } from "./db";
 import type { UserProfile } from "./types";
 
 export async function getSessionUser(): Promise<{
@@ -54,14 +53,18 @@ export async function ensureUserProfile(session: {
   name: string;
 }): Promise<UserProfile> {
   const existing = await getUserProfile(session.userId);
-  const role = roleForEmail(session.email);
+  const resolved = await resolveRoleForEmail(session.email);
+  const role = resolved.role;
+  const department = resolved.department;
+  const name = session.name || resolved.displayName || "User";
 
   if (!existing) {
     const profile = await upsertUserProfile({
       clerk_user_id: session.userId,
       email: session.email,
-      name: session.name,
+      name,
       role,
+      department,
     });
     await logAudit({
       user_id: session.userId,
@@ -78,14 +81,15 @@ export async function ensureUserProfile(session: {
   if (
     existing.role !== role ||
     existing.email !== session.email ||
-    existing.name !== session.name
+    existing.name !== name ||
+    existing.department !== department
   ) {
     return upsertUserProfile({
       ...existing,
       email: session.email,
-      name: session.name,
+      name,
       role,
-      department: role === "Patient" || role === "Admin" ? undefined : existing.department,
+      department,
     });
   }
 

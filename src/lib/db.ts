@@ -13,6 +13,7 @@ import type {
   ReminderType,
   UserProfile,
   UserRole,
+  RoleAssignment,
 } from "./types";
 import { DAY_NAMES } from "./constants";
 import { loadStore, saveStore, resetStore, migrateStore } from "./storage";
@@ -59,6 +60,70 @@ export async function upsertUserProfile(profile: UserProfile): Promise<UserProfi
   else store.user_profiles[idx] = profile;
   await writeStore(store);
   return profile;
+}
+
+function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
+}
+
+export async function listRoleAssignments(): Promise<RoleAssignment[]> {
+  const store = await readStore();
+  return [...store.role_assignments].sort((a, b) => a.email.localeCompare(b.email));
+}
+
+export async function getRoleAssignmentForEmail(
+  email: string
+): Promise<RoleAssignment | undefined> {
+  const store = await readStore();
+  const normalized = normalizeEmail(email);
+  return store.role_assignments.find((r) => normalizeEmail(r.email) === normalized);
+}
+
+export async function createRoleAssignment(
+  data: Omit<RoleAssignment, "id" | "created_at" | "updated_at">
+): Promise<RoleAssignment> {
+  const store = await readStore();
+  const normalized = normalizeEmail(data.email);
+  if (store.role_assignments.some((r) => normalizeEmail(r.email) === normalized)) {
+    throw new Error("A staff record already exists for this email");
+  }
+
+  const now = new Date().toISOString();
+  const record: RoleAssignment = {
+    ...data,
+    email: normalized,
+    id: `RA-${String(store.role_assignments.length + 1).padStart(3, "0")}`,
+    created_at: now,
+    updated_at: now,
+  };
+  store.role_assignments.push(record);
+  await writeStore(store);
+  return record;
+}
+
+export async function deleteRoleAssignment(id: string): Promise<boolean> {
+  const store = await readStore();
+  const before = store.role_assignments.length;
+  store.role_assignments = store.role_assignments.filter((r) => r.id !== id);
+  if (store.role_assignments.length === before) return false;
+  await writeStore(store);
+  return true;
+}
+
+export async function resolveRoleForEmail(email: string): Promise<{
+  role: UserRole;
+  department?: string;
+  displayName?: string;
+}> {
+  const assignment = await getRoleAssignmentForEmail(email);
+  if (!assignment) {
+    return { role: "Patient" };
+  }
+  return {
+    role: assignment.role,
+    department: assignment.role === "Doctor" ? assignment.department : undefined,
+    displayName: assignment.name,
+  };
 }
 
 export async function checkDuplicatePatient(

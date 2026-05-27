@@ -15,6 +15,7 @@ export function migrateStore(raw: Partial<DataStore>): DataStore {
     appointments: raw.appointments ?? [],
     availability: raw.availability ?? [],
     user_profiles: raw.user_profiles ?? [],
+    role_assignments: raw.role_assignments ?? [],
     audit_logs: raw.audit_logs ?? [],
     reminders: raw.reminders ?? [],
   };

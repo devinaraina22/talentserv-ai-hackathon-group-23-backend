@@ -60,6 +60,7 @@ export function canAccessNav(role: UserRole, href: string): boolean {
     "/availability": "availability:read",
     "/audit": "audit:read",
     "/reminders": "reminders:send",
+    "/staff": "admin:all",
   };
   for (const [path, perm] of Object.entries(rules)) {
     if (href.startsWith(path)) return hasPermission(role, perm);

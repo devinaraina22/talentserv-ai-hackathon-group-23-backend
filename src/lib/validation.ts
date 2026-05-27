@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { APPOINTMENT_TYPES, GENDERS } from "./constants";
+import { APPOINTMENT_TYPES, DEPARTMENTS, GENDERS } from "./constants";
 
 export const patientSchema = z.object({
   patient_id: z
@@ -59,6 +59,33 @@ export const appointmentSearchSchema = z.object({
   department: z.string().optional(),
   date: z.string().optional(),
 });
+
+export const roleAssignmentSchema = z
+  .object({
+    email: z.string().email("Invalid email address"),
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    role: z.enum(["Admin", "Receptionist", "Doctor"]),
+    department: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "Doctor") {
+      if (!data.department) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Department is required for Doctor role",
+          path: ["department"],
+        });
+        return;
+      }
+      if (!DEPARTMENTS.includes(data.department as (typeof DEPARTMENTS)[number])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Invalid department",
+          path: ["department"],
+        });
+      }
+    }
+  });
 
 export type PatientInput = z.infer<typeof patientSchema>;
 export type HealthIntakeInput = z.infer<typeof healthIntakeSchema>;

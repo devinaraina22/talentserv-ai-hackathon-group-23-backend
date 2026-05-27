@@ -57,6 +57,17 @@ export interface UserProfile {
   department?: string;
 }
 
+/** Pre-registered staff — matched by email on sign-in; everyone else is Patient. */
+export interface RoleAssignment {
+  id: string;
+  email: string;
+  name: string;
+  role: Exclude<UserRole, "Patient">;
+  department?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
@@ -86,6 +97,7 @@ export interface DataStore {
   appointments: Appointment[];
   availability: DoctorAvailability[];
   user_profiles: UserProfile[];
+  role_assignments: RoleAssignment[];
   audit_logs: AuditLogEntry[];
   reminders: ReminderLog[];
 }
