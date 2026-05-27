@@ -1,12 +1,12 @@
 import { cookies, headers } from "next/headers";
 import { getRoleAssignmentById } from "./db";
 import {
-  demoPatientUserId,
+  demoSessionUserId,
   demoStaffDisplayName,
   isPatientSession,
-  nameFromEmail,
-  parsePatientSession,
-  type DemoPatientSession,
+  parseDemoSession,
+  resolveDemoSessionPayload,
+  type DemoSessionPayload,
 } from "./demo-session";
 import type { UserRole } from "./types";
 
@@ -34,69 +34,70 @@ export function isDemoLoginEnabled(): boolean {
   );
 }
 
-function patientFromPayload(payload: DemoPatientSession): DemoSessionUser {
+function payloadToUser(payload: DemoSessionPayload): DemoSessionUser {
   return {
-    userId: demoPatientUserId(payload.email),
+    userId: demoSessionUserId(payload),
     email: payload.email,
     name: payload.name,
-    role: "Patient",
+    role: payload.role,
+    department: payload.department,
   };
 }
 
-function patientFromHeaders(h: Headers): DemoSessionUser | null {
+function userFromHeaders(h: Headers): DemoSessionUser | null {
+  const role = h.get("x-demo-role") as UserRole | null;
   const email = h.get("x-demo-email");
   const name = h.get("x-demo-name");
-  if (!email || !name) return null;
-  return patientFromPayload({ email, name });
+  if (!role || !email || !name) return null;
+
+  const staffId = h.get("x-demo-staff-id") ?? undefined;
+  const department = h.get("x-demo-department") ?? undefined;
+  return payloadToUser({
+    role,
+    email,
+    name,
+    staffId,
+    department: department || undefined,
+  });
 }
 
-function resolvePatientSession(value: string): DemoSessionUser | null {
-  if (value === "patient") {
-    return { ...DEMO_PATIENT, role: "Patient" };
-  }
-  const payload = parsePatientSession(value);
-  if (!payload) return null;
-  return patientFromPayload(payload);
+async function userFromLegacyStaffId(staffId: string): Promise<DemoSessionUser | null> {
+  const assignment = await getRoleAssignmentById(staffId);
+  if (!assignment) return null;
+  return payloadToUser({
+    role: assignment.role,
+    email: assignment.email,
+    name: demoStaffDisplayName(assignment.email, assignment.name),
+    staffId: assignment.id,
+    department: assignment.department,
+  });
 }
 
 export async function getDemoSessionUser(): Promise<DemoSessionUser | null> {
   if (!isDemoLoginEnabled()) return null;
 
   const h = await headers();
-  if (h.get("authorization") !== `Bearer ${DEMO_BEARER}`) return null;
+  if (h.get("authorization") === `Bearer ${DEMO_BEARER}`) {
+    const fromHeaders = userFromHeaders(h);
+    if (fromHeaders) return fromHeaders;
 
-  if (h.get("x-demo-as-patient") === "true") {
-    return patientFromHeaders(h) ?? { ...DEMO_PATIENT, role: "Patient" };
-  }
-
-  const staffId = h.get("x-demo-staff-id");
-  if (staffId) {
-    const assignment = await getRoleAssignmentById(staffId);
-    if (!assignment) return null;
-    return {
-      userId: `demo-${assignment.id}`,
-      email: assignment.email,
-      name: demoStaffDisplayName(assignment.email, assignment.name),
-      role: assignment.role,
-      department: assignment.department,
-    };
+    const staffId = h.get("x-demo-staff-id");
+    if (staffId) {
+      const legacy = await userFromLegacyStaffId(staffId);
+      if (legacy) return legacy;
+    }
   }
 
   const cookieStore = await cookies();
   const fromCookie = cookieStore.get(DEMO_SESSION_COOKIE)?.value;
   if (!fromCookie) return null;
 
-  if (isPatientSession(fromCookie)) {
-    return resolvePatientSession(fromCookie);
+  const payload = resolveDemoSessionPayload(fromCookie);
+  if (payload) return payloadToUser(payload);
+
+  if (!isPatientSession(fromCookie)) {
+    return userFromLegacyStaffId(fromCookie);
   }
 
-  const assignment = await getRoleAssignmentById(fromCookie);
-  if (!assignment) return null;
-  return {
-    userId: `demo-${assignment.id}`,
-    email: assignment.email,
-    name: demoStaffDisplayName(assignment.email, assignment.name),
-    role: assignment.role,
-    department: assignment.department,
-  };
+  return null;
 }

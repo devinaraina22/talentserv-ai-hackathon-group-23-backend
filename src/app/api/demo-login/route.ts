@@ -3,29 +3,52 @@ import { z } from "zod";
 import { getRoleAssignmentById, getRoleAssignmentForEmail } from "@/lib/db";
 import { DEMO_PATIENT, isDemoLoginEnabled } from "@/lib/demo-auth";
 import {
-  demoPatientUserId,
+  demoSessionUserId,
   demoStaffDisplayName,
-  encodePatientSession,
+  encodeDemoSession,
   nameFromEmail,
-  parsePatientSession,
+  parseDemoSession,
+  resolveDemoSessionPayload,
 } from "@/lib/demo-session";
 import type { UserRole } from "@/lib/types";
 
 const STAFF_ROLES = ["Admin", "Receptionist", "Doctor"] as const;
 
-function staffUser(assignment: {
+function buildStaffSession(assignment: {
   id: string;
   email: string;
   name: string;
-  role: (typeof STAFF_ROLES)[number] | UserRole;
+  role: UserRole;
   department?: string;
 }) {
-  return {
-    userId: `demo-${assignment.id}`,
+  const payload = {
+    role: assignment.role,
     email: assignment.email,
     name: demoStaffDisplayName(assignment.email, assignment.name),
-    role: assignment.role,
+    staffId: assignment.id,
     department: assignment.department,
+  };
+  return {
+    session: encodeDemoSession(payload),
+    user: {
+      userId: demoSessionUserId(payload),
+      ...payload,
+    },
+  };
+}
+
+function buildPatientSession(email: string, name: string) {
+  const payload = {
+    role: "Patient" as const,
+    email: email.toLowerCase().trim(),
+    name: name.trim(),
+  };
+  return {
+    session: encodeDemoSession(payload),
+    user: {
+      userId: demoSessionUserId(payload),
+      ...payload,
+    },
   };
 }
 
@@ -60,18 +83,19 @@ const legacyStaffSchema = z.object({
 });
 
 function resolveSessionUser(sessionId: string) {
-  if (sessionId === "patient") {
-    return { ...DEMO_PATIENT, role: "Patient" as UserRole };
+  const payload = resolveDemoSessionPayload(sessionId) ?? parseDemoSession(sessionId);
+  if (payload) {
+    return {
+      userId: demoSessionUserId(payload),
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+      department: payload.department,
+    };
   }
 
-  const patient = parsePatientSession(sessionId);
-  if (patient) {
-    return {
-      userId: demoPatientUserId(patient.email),
-      email: patient.email,
-      name: patient.name,
-      role: "Patient" as UserRole,
-    };
+  if (sessionId === "patient") {
+    return { ...DEMO_PATIENT, role: "Patient" as UserRole };
   }
 
   return null;
@@ -87,9 +111,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const patientUser = resolveSessionUser(sessionId);
-  if (patientUser) {
-    return NextResponse.json({ user: patientUser });
+  const user = resolveSessionUser(sessionId);
+  if (user) {
+    return NextResponse.json({ user });
   }
 
   const assignment = await getRoleAssignmentById(sessionId);
@@ -97,7 +121,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ user: staffUser(assignment) });
+  return NextResponse.json({ user: buildStaffSession(assignment).user });
 }
 
 export async function POST(request: NextRequest) {
@@ -110,17 +134,8 @@ export async function POST(request: NextRequest) {
   const legacyPatient = legacyPatientSchema.safeParse(body);
   if (legacyPatient.success) {
     const { email, name } = legacyPatient.data;
-    const session = encodePatientSession({ email, name });
-    return NextResponse.json({
-      ok: true,
-      session,
-      user: {
-        userId: demoPatientUserId(email),
-        email: email.toLowerCase().trim(),
-        name: name.trim(),
-        role: "Patient",
-      },
-    });
+    const result = buildPatientSession(email, name);
+    return NextResponse.json({ ok: true, ...result });
   }
 
   const legacyStaff = legacyStaffSchema.safeParse(body);
@@ -142,11 +157,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      session: assignment.id,
-      user: staffUser(assignment),
-    });
+    const result = buildStaffSession(assignment);
+    return NextResponse.json({ ok: true, ...result });
   }
 
   const credentialsParsed = credentialsLoginSchema.safeParse(body);
@@ -158,19 +170,8 @@ export async function POST(request: NextRequest) {
   const { email, role } = credentialsParsed.data;
 
   if (role === "Patient") {
-    const normalizedEmail = email.toLowerCase().trim();
-    const name = nameFromEmail(normalizedEmail);
-    const session = encodePatientSession({ email: normalizedEmail, name });
-    return NextResponse.json({
-      ok: true,
-      session,
-      user: {
-        userId: demoPatientUserId(normalizedEmail),
-        email: normalizedEmail,
-        name,
-        role: "Patient",
-      },
-    });
+    const result = buildPatientSession(email, nameFromEmail(email));
+    return NextResponse.json({ ok: true, ...result });
   }
 
   const assignment = await getRoleAssignmentForEmail(email);
@@ -189,9 +190,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    session: assignment.id,
-    user: staffUser(assignment),
-  });
+  const result = buildStaffSession(assignment);
+  return NextResponse.json({ ok: true, ...result });
 }
